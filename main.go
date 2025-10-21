@@ -183,7 +183,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "common/common.proto";
 
-option go_package = "/{{.ProjectNameSnake}}";
+option go_package = "/{{.ProjectNameSnake}}_v1";
 
 service {{.EntityName}} {
   rpc Create({{.EntityName}}CreateReq) returns ({{.EntityName}}CreateRep) {
