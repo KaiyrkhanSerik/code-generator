@@ -7,13 +7,23 @@ A Go-based CRUD generator for generating boilerplate code for microservices foll
 ```bash
 # 1. Clone the repository
 git clone https://github.com/KaiyrkhanSerik/code-generator.git
-cd code-generator
+```
 
+```bash
+cd code-generator
+```
+
+```bash
 # 2. Build the binary
 go build -o crudgen
+```
 
+```bash
 # 3. Create an alias (add to ~/.bashrc or ~/.zshrc)
 echo "alias crudgen='$(pwd)/crudgen'" >> ~/.bashrc
+```
+
+```bash
 source ~/.bashrc
 ```
 
