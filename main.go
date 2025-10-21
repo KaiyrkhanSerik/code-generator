@@ -814,10 +814,6 @@ func New{{.EntityName}}(usecase *{{.PackageName}}.Usecase) *{{.EntityName}} {
 }
 
 func (h *{{.EntityName}}) Create(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}CreateReq) (*{{.ProjectNameSnake}}_v1.{{.EntityName}}CreateRep, error) {
-	if err != nil {
-		return nil, err
-	}
-
 	id, err := h.usecase.Create(ctx, dto.Decode{{.EntityName}}CreateReq(req))
 	if err != nil {
 		return nil, fmt.Errorf("usecase.Create: %w", err)
@@ -829,10 +825,6 @@ func (h *{{.EntityName}}) Create(ctx context.Context, req *{{.ProjectNameSnake}}
 }
 
 func (h *{{.EntityName}}) GetById(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}GetByIdReq) (*{{.ProjectNameSnake}}_v1.{{.EntityName}}Main, error) {
-	if err != nil {
-		return nil, err
-	}
-
 	result, err := h.usecase.GetById(ctx, req.Id)
 	if err != nil {
 		return nil, fmt.Errorf("usecase.GetById: %w", err)
@@ -842,10 +834,6 @@ func (h *{{.EntityName}}) GetById(ctx context.Context, req *{{.ProjectNameSnake}
 }
 
 func (h *{{.EntityName}}) List(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}ListReq) (*{{.ProjectNameSnake}}_v1.{{.EntityName}}ListRep, error) {
-	if err != nil {
-		return nil, err
-	}
-
 	items, tCount, err := h.usecase.List(ctx, dto.Decode{{.EntityName}}ListReq(req))
 	if err != nil {
 		return nil, fmt.Errorf("usecase.List: %w", err)
@@ -867,10 +855,6 @@ func (h *{{.EntityName}}) List(ctx context.Context, req *{{.ProjectNameSnake}}_v
 }
 
 func (h *{{.EntityName}}) Update(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}UpdateReq) (*emptypb.Empty, error) {
-	if err != nil {
-		return nil, err
-	}
-
 	err = h.usecase.Update(ctx, dto.Decode{{.EntityName}}UpdateReq(req))
 	if err != nil {
 		return nil, fmt.Errorf("usecase.Update: %w", err)
@@ -880,10 +864,6 @@ func (h *{{.EntityName}}) Update(ctx context.Context, req *{{.ProjectNameSnake}}
 }
 
 func (h *{{.EntityName}}) Delete(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}DeleteReq) (*emptypb.Empty, error) {
-	if err != nil {
-		return nil, err
-	}
-
 	err = h.usecase.Delete(ctx, req.Id)
 	if err != nil {
 		return nil, fmt.Errorf("usecase.Delete: %w", err)
