@@ -855,7 +855,7 @@ func (h *{{.EntityName}}) List(ctx context.Context, req *{{.ProjectNameSnake}}_v
 }
 
 func (h *{{.EntityName}}) Update(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}UpdateReq) (*emptypb.Empty, error) {
-	err = h.usecase.Update(ctx, dto.Decode{{.EntityName}}UpdateReq(req))
+	err := h.usecase.Update(ctx, dto.Decode{{.EntityName}}UpdateReq(req))
 	if err != nil {
 		return nil, fmt.Errorf("usecase.Update: %w", err)
 	}
@@ -864,7 +864,7 @@ func (h *{{.EntityName}}) Update(ctx context.Context, req *{{.ProjectNameSnake}}
 }
 
 func (h *{{.EntityName}}) Delete(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}DeleteReq) (*emptypb.Empty, error) {
-	err = h.usecase.Delete(ctx, req.Id)
+	err := h.usecase.Delete(ctx, req.Id)
 	if err != nil {
 		return nil, fmt.Errorf("usecase.Delete: %w", err)
 	}
