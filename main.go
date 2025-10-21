@@ -177,7 +177,7 @@ func (g *Generator) createDirectories(data *TemplateData) error {
 func (g *Generator) generateProtoFile(data *TemplateData) error {
 	tmpl := `syntax = "proto3";
 
-package {{.ProjectNameSnake}};
+package {{.ProjectNameSnake}}_v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
