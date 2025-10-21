@@ -339,7 +339,7 @@ func (s *Service) Create(ctx context.Context, m *model.Edit) (int64, error) {
 }
 
 func (s *Service) GetById(ctx context.Context, id int64, errNE bool) (*model.Main, bool, error) {
-	model, found, err := s.repo.GetById(ctx, id)
+	{{.EntityNameLower}}, found, err := s.repo.GetById(ctx, id)
     
     if err != nil {
 		return nil, false, fmt.Errorf("service.GetById: %w", err)
@@ -352,7 +352,7 @@ func (s *Service) GetById(ctx context.Context, id int64, errNE bool) (*model.Mai
 		return nil, false, nil
 	}
 
-    return model, true, nil
+    return {{.EntityNameLower}}, true, nil
 }
 
 func (s *Service) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
