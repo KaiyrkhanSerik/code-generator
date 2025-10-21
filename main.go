@@ -22,14 +22,18 @@ type EntityField struct {
 }
 
 type TemplateData struct {
-	EntityName      string
-	EntityNameLower string
-	EntityNameSnake string
-	TableName       string
-	PackageName     string
-	Fields          []EntityField
-	NonIdFields     []EntityField
-	ProtoPackage    string
+	EntityName       string
+	EntityNameLower  string
+	EntityNameSnake  string
+	ProjectName      string
+	ProjectNameLower string
+	ProjectNameSnake string
+	ProjectNameKebab string
+	TableName        string
+	PackageName      string
+	Fields           []EntityField
+	NonIdFields      []EntityField
+	ProtoPackage     string
 }
 
 func main() {
@@ -55,7 +59,8 @@ func main() {
 	}
 
 	gen := &Generator{
-		EntityName: entityName,
+		EntityName:  entityName,
+		ProjectName: projectName,
 	}
 
 	if err := gen.Generate(); err != nil {
@@ -66,7 +71,8 @@ func main() {
 }
 
 type Generator struct {
-	EntityName string
+	EntityName  string
+	ProjectName string
 }
 
 func (g *Generator) Generate() error {
@@ -100,9 +106,9 @@ func (g *Generator) Generate() error {
 	fmt.Println("1. Create database migration for table:", data.TableName)
 	fmt.Println("2. Run: make generate")
 	fmt.Println("3. Register generated code in internal/app/app.go")
-	fmt.Printf("   - Import domain%sP \"github.com/mechta-market/auth/internal/domain/%s\"\n", data.EntityName, data.EntityNameSnake)
-	fmt.Printf("   - Import domain%sRepoDbP \"github.com/mechta-market/auth/internal/domain/%s/repo/pg\"\n", data.EntityName, data.EntityNameSnake)
-	fmt.Printf("   - Import usecase%sP \"github.com/mechta-market/auth/internal/usecase/%s\"\n", data.EntityName, data.EntityNameSnake)
+	fmt.Printf("   - Import domain%sP \"github.com/mechta-market/%s/internal/domain/%s\"\n", data.EntityName, data.ProjectNameSnake, data.EntityNameSnake)
+	fmt.Printf("   - Import domain%sRepoDbP \"github.com/mechta-market/%s/internal/domain/%s/repo/pg\"\n", data.EntityName, data.ProjectNameSnake, data.EntityNameSnake)
+	fmt.Printf("   - Import usecase%sP \"github.com/mechta-market/%s/internal/usecase/%s\"\n", data.EntityName, data.ProjectNameSnake, data.EntityNameSnake)
 	fmt.Printf("   - Add variables and initialization\n")
 	fmt.Printf("   - Register in grpc server and gateway\n")
 
@@ -112,6 +118,9 @@ func (g *Generator) Generate() error {
 func (g *Generator) prepareTemplateData() *TemplateData {
 	entityNameLower := strings.ToLower(string(g.EntityName[0])) + g.EntityName[1:]
 	entityNameSnake := toSnakeCase(g.EntityName)
+	projectNameLower := strings.ToLower(string(g.ProjectName[0])) + g.ProjectName[1:]
+	projectNameSnake := toSnakeCase(g.ProjectName)
+	projectNameKebab := toKebabCase(g.ProjectName)
 
 	fields := []EntityField{
 		{Name: "Id", GoType: "int64", ProtoType: "int64", JsonTag: "id", DbTag: "id", IsOptional: false, SqlType: "BIGSERIAL PRIMARY KEY"},
@@ -129,20 +138,24 @@ func (g *Generator) prepareTemplateData() *TemplateData {
 	}
 
 	return &TemplateData{
-		EntityName:      g.EntityName,
-		EntityNameLower: entityNameLower,
-		EntityNameSnake: entityNameSnake,
-		TableName:       entityNameSnake + "s",
-		PackageName:     entityNameSnake,
-		Fields:          fields,
-		NonIdFields:     nonIdFields,
-		ProtoPackage:    "auth_v1",
+		EntityName:       g.EntityName,
+		EntityNameLower:  entityNameLower,
+		EntityNameSnake:  entityNameSnake,
+		ProjectName:      g.ProjectName,
+		ProjectNameLower: projectNameLower,
+		ProjectNameSnake: projectNameSnake,
+		ProjectNameKebab: projectNameKebab,
+		TableName:        entityNameSnake + "s",
+		PackageName:      entityNameSnake,
+		Fields:           fields,
+		NonIdFields:      nonIdFields,
+		ProtoPackage:     fmt.Sprintf("%s_v1", projectNameSnake),
 	}
 }
 
 func (g *Generator) createDirectories(data *TemplateData) error {
 	dirs := []string{
-		filepath.Join("api", "proto", "auth_v1"),
+		filepath.Join("api", "proto", fmt.Sprintf("%s_v1", data.ProjectNameSnake)),
 		filepath.Join("internal", "domain", data.EntityNameSnake),
 		filepath.Join("internal", "domain", data.EntityNameSnake, "model"),
 		filepath.Join("internal", "domain", data.EntityNameSnake, "repo", "pg"),
@@ -164,13 +177,13 @@ func (g *Generator) createDirectories(data *TemplateData) error {
 func (g *Generator) generateProtoFile(data *TemplateData) error {
 	tmpl := `syntax = "proto3";
 
-package auth_v1;
+package {{.ProjectNameSnake}};
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "common/common.proto";
 
-option go_package = "/auth_v1";
+option go_package = "/{{.ProjectNameSnake}}";
 
 service {{.EntityName}} {
   rpc Create({{.EntityName}}CreateReq) returns ({{.EntityName}}CreateRep) {
@@ -244,7 +257,7 @@ message {{.EntityName}}DeleteReq {
 }
 `
 
-	return g.executeTemplate(tmpl, data, filepath.Join("api", "proto", "auth_v1", data.EntityNameSnake+".proto"))
+	return g.executeTemplate(tmpl, data, filepath.Join("api", "proto", fmt.Sprintf("%s_v1", data.ProjectNameSnake), data.EntityNameSnake+".proto"))
 }
 
 func (g *Generator) generateDomainFiles(data *TemplateData) error {
@@ -254,7 +267,7 @@ func (g *Generator) generateDomainFiles(data *TemplateData) error {
 import (
 	"time"
 
-	commonModel "github.com/mechta-market/auth/internal/domain/common/model"
+	commonModel "github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/common/model"
 )
 
 type Main struct {
@@ -283,7 +296,7 @@ type ListReq struct {
 import (
 	"context"
 
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
 )
 
 type RepoI interface {
@@ -304,7 +317,7 @@ type RepoI interface {
 import (
 	"context"
 
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
 )
 
 type Service struct {
@@ -378,9 +391,9 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	commonRepoPg "github.com/mechta-market/auth/internal/domain/common/repo/pg"
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
-	repoModel "github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/repo/pg/model"
+	commonRepoPg "github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/common/repo/pg"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
+	repoModel "github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/repo/pg/model"
 	"github.com/mechta-market/mobone/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/samber/lo"
@@ -537,7 +550,7 @@ func (r *Repo) Delete(ctx context.Context, id int64) (finalError error) {
 	customTmpl := `package pg
 
 import (
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
 )
 
 func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]any) {
@@ -645,7 +658,7 @@ func (m *Upsert) ReturningColumnMap() map[string]any {
 import (
 	"time"
 
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
 )
 
 func EncodeEdit(m *model.Edit) *Upsert {
@@ -680,7 +693,7 @@ func (g *Generator) generateUsecaseFiles(data *TemplateData) error {
 import (
 	"context"
 
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
 )
 
 type {{.EntityName}}ServiceI interface {
@@ -701,10 +714,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mechta-market/auth/internal/constant"
-	"github.com/mechta-market/auth/internal/domain/common/util"
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
-	"github.com/mechta-market/auth/internal/errs"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/constant"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/common/util"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/errs"
 )
 
 type Usecase struct {
@@ -781,16 +794,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
-	"github.com/mechta-market/auth/internal/handler/grpc/dto"
-	"github.com/mechta-market/auth/internal/usecase/{{.EntityNameSnake}}"
-	"github.com/mechta-market/auth/pkg/proto/auth_v1"
-	"github.com/mechta-market/auth/pkg/proto/common"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/handler/grpc/dto"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/usecase/{{.EntityNameSnake}}"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/pkg/proto/{{.ProjectNameSnake}}_v1"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/pkg/proto/common"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type {{.EntityName}} struct {
-	auth_v1.Unsafe{{.EntityName}}Server
+	{{.ProjectNameSnake}}_v1.Unsafe{{.EntityName}}Server
 	usecase *{{.PackageName}}.Usecase
 }
 
@@ -800,7 +813,7 @@ func New{{.EntityName}}(usecase *{{.PackageName}}.Usecase) *{{.EntityName}} {
 	}
 }
 
-func (h *{{.EntityName}}) Create(ctx context.Context, req *auth_v1.{{.EntityName}}CreateReq) (*auth_v1.{{.EntityName}}CreateRep, error) {
+func (h *{{.EntityName}}) Create(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}CreateReq) (*{{.ProjectNameSnake}}_v1.{{.EntityName}}CreateRep, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -810,12 +823,12 @@ func (h *{{.EntityName}}) Create(ctx context.Context, req *auth_v1.{{.EntityName
 		return nil, fmt.Errorf("usecase.Create: %w", err)
 	}
 
-	return &auth_v1.{{.EntityName}}CreateRep{
+	return &{{.ProjectNameSnake}}_v1.{{.EntityName}}CreateRep{
 		Id: id,
 	}, nil
 }
 
-func (h *{{.EntityName}}) GetById(ctx context.Context, req *auth_v1.{{.EntityName}}GetByIdReq) (*auth_v1.{{.EntityName}}Main, error) {
+func (h *{{.EntityName}}) GetById(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}GetByIdReq) (*{{.ProjectNameSnake}}_v1.{{.EntityName}}Main, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -828,7 +841,7 @@ func (h *{{.EntityName}}) GetById(ctx context.Context, req *auth_v1.{{.EntityNam
 	return dto.Encode{{.EntityName}}Main(result), nil
 }
 
-func (h *{{.EntityName}}) List(ctx context.Context, req *auth_v1.{{.EntityName}}ListReq) (*auth_v1.{{.EntityName}}ListRep, error) {
+func (h *{{.EntityName}}) List(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}ListReq) (*{{.ProjectNameSnake}}_v1.{{.EntityName}}ListRep, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -838,12 +851,12 @@ func (h *{{.EntityName}}) List(ctx context.Context, req *auth_v1.{{.EntityName}}
 		return nil, fmt.Errorf("usecase.List: %w", err)
 	}
 
-	resultItems := make([]*auth_v1.{{.EntityName}}Main, len(items))
+	resultItems := make([]*{{.ProjectNameSnake}}_v1.{{.EntityName}}Main, len(items))
 	for i, item := range items {
 		resultItems[i] = dto.Encode{{.EntityName}}Main(item)
 	}
 
-	return &auth_v1.{{.EntityName}}ListRep{
+	return &{{.ProjectNameSnake}}_v1.{{.EntityName}}ListRep{
 		PaginationInfo: &common.PaginationInfoSt{
 			Page:       req.ListParams.Page,
 			PageSize:   req.ListParams.PageSize,
@@ -853,7 +866,7 @@ func (h *{{.EntityName}}) List(ctx context.Context, req *auth_v1.{{.EntityName}}
 	}, nil
 }
 
-func (h *{{.EntityName}}) Update(ctx context.Context, req *auth_v1.{{.EntityName}}UpdateReq) (*emptypb.Empty, error) {
+func (h *{{.EntityName}}) Update(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}UpdateReq) (*emptypb.Empty, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -866,7 +879,7 @@ func (h *{{.EntityName}}) Update(ctx context.Context, req *auth_v1.{{.EntityName
 	return &emptypb.Empty{}, nil
 }
 
-func (h *{{.EntityName}}) Delete(ctx context.Context, req *auth_v1.{{.EntityName}}DeleteReq) (*emptypb.Empty, error) {
+func (h *{{.EntityName}}) Delete(ctx context.Context, req *{{.ProjectNameSnake}}_v1.{{.EntityName}}DeleteReq) (*emptypb.Empty, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -888,16 +901,16 @@ func (g *Generator) generateDTOFiles(data *TemplateData) error {
 import (
 	"time"
 
-	"github.com/mechta-market/auth/internal/domain/{{.EntityNameSnake}}/model"
-	"github.com/mechta-market/auth/pkg/proto/auth_v1"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/internal/domain/{{.EntityNameSnake}}/model"
+	"github.com/mechta-market/{{.ProjectNameKebab}}/pkg/proto/{{.ProjectNameSnake}}_v1"
 )
 
-func Encode{{.EntityName}}Main(m *model.Main) *auth_v1.{{.EntityName}}Main {
+func Encode{{.EntityName}}Main(m *model.Main) *{{.ProjectNameSnake}}_v1.{{.EntityName}}Main {
 	if m == nil {
 		return nil
 	}
 
-	return &auth_v1.{{.EntityName}}Main{
+	return &{{.ProjectNameSnake}}_v1.{{.EntityName}}Main{
 		Id:          m.Id,
 		Title:       m.Title,
 		Description: m.Description,
@@ -906,7 +919,7 @@ func Encode{{.EntityName}}Main(m *model.Main) *auth_v1.{{.EntityName}}Main {
 	}
 }
 
-func Decode{{.EntityName}}CreateReq(req *auth_v1.{{.EntityName}}CreateReq) *model.Edit {
+func Decode{{.EntityName}}CreateReq(req *{{.ProjectNameSnake}}_v1.{{.EntityName}}CreateReq) *model.Edit {
 	if req == nil {
 		return nil
 	}
@@ -917,7 +930,7 @@ func Decode{{.EntityName}}CreateReq(req *auth_v1.{{.EntityName}}CreateReq) *mode
 	}
 }
 
-func Decode{{.EntityName}}UpdateReq(req *auth_v1.{{.EntityName}}UpdateReq) *model.Edit {
+func Decode{{.EntityName}}UpdateReq(req *{{.ProjectNameSnake}}_v1.{{.EntityName}}UpdateReq) *model.Edit {
 	if req == nil {
 		return nil
 	}
@@ -929,7 +942,7 @@ func Decode{{.EntityName}}UpdateReq(req *auth_v1.{{.EntityName}}UpdateReq) *mode
 	}
 }
 
-func Decode{{.EntityName}}ListReq(req *auth_v1.{{.EntityName}}ListReq) *model.ListReq {
+func Decode{{.EntityName}}ListReq(req *{{.ProjectNameSnake}}_v1.{{.EntityName}}ListReq) *model.ListReq {
 	if req == nil {
 		return nil
 	}
@@ -999,6 +1012,21 @@ func toSnakeCase(s string) string {
 		if unicode.IsUpper(r) {
 			if i > 0 {
 				result = append(result, '_')
+			}
+			result = append(result, unicode.ToLower(r))
+		} else {
+			result = append(result, r)
+		}
+	}
+	return string(result)
+}
+
+func toKebabCase(s string) string {
+	var result []rune
+	for i, r := range s {
+		if unicode.IsUpper(r) {
+			if i > 0 {
+				result = append(result, '-')
 			}
 			result = append(result, unicode.ToLower(r))
 		} else {
